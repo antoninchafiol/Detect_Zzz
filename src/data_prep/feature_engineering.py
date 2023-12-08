@@ -17,6 +17,7 @@ class FeatureTrain():
 
     def apply_kmeans(self):
         km = KMeans(n_clusters=2, n_init=5, max_iter=55)
+        # print(self.X)
         self.X['cluster'] = km.fit(self.X.drop(columns=['series_id', 'step', 'event'])).labels_
         return self
     def apply_PCA(self):
@@ -39,10 +40,11 @@ class FeatureTrain():
     def save(self, path_str):
         self.X.to_parquet(f"data/custom/X_fe_{path_str}.parquet")
     def fit(self):
-        self.X = self.apply_PCA()
-        self.X = self.apply_kmeans()
-        self.X = self.apply_mult()
-        self.X = self.apply_lag(2)
+        self.merge()
+        self.apply_PCA()
+        self.apply_kmeans()
+        self.apply_mult()
+        self.apply_lag(2)
         return self
 
 class FeatureEng():
@@ -90,7 +92,7 @@ if __name__=="__main__":
 
     fe = FeatureTrain(pd.read_parquet("data/custom/series_dropna_timestamp.parquet"), pd.read_parquet("data/custom/event_dropna_timestamp.parquet"))
     fe = fe.fit()
-    fe.save()
+    fe.save("full0")
 
-    print(fe.X)
-    print(fe.X['event'].unique())
+    # print(fe.X)
+    # print(fe.X['event'].unique())
