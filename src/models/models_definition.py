@@ -29,12 +29,15 @@ def splitting_rows(source_split_set, sample_percent, full_set):
     y_test = X_test.pop('event')
     return X_train, X_test, y_train, y_test
 
-
-
+def ram_splitting_rows(source_split_set_path, sample_percent, full_set_path, ram_eco_frac):
+    X = pd.read_parquet(full_set_path)
+    split_set = pd.read_parquet(source_split_set_path)
+    split_set = split_set[:int(split_set.shape[0]*ram_eco_frac)]
+    X = X[:split_set.loc[split_set.shape[0]-1]['max_index']]
+    return splitting_rows(split_set, sample_percent, X)
 
 if __name__=='__main__':
-    generate_split_sets("data/custom/X_fe_full0.parquet") 
 
-    xt, xd, yt, yd = splitting_rows(pd.read_parquet("data/custom/train_test_splitting_set.parquet"), .35, pd.read_parquet("data/custom/X_fe_full0.parquet"))
+    xt, xd, yt, yd = ram_splitting_rows("data/custom/train_test_splitting_set.parquet", .35, "data/custom/X_fe_full0.parquet", 0.35)
     print(yt)
     print(yd)
