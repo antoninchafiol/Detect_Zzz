@@ -1,6 +1,7 @@
 import pandas as pd
 from sklearn.cluster._kmeans import KMeans
 from sklearn.decomposition import PCA
+import numpy as np 
 
 class FeatureTrain():
     def __init__(self, features_df, labels_df):
@@ -76,23 +77,38 @@ class FeatureEng():
         self.features = self.features.dropna()
         return self
     def apply_label_conversion(self):
-        self.labels['digit_event'] = self.labels['event'].apply(lambda x: 0 if x=="onset" else 1)
+        self.labels.loc[:, 'event'] = self.labels['event'].replace(['onset', 'wakeup'], [1,2])
+        return self
+    def apply_series_conversion(self):
+        uniq = self.features['series_id'].unique()
+        self.labels['_series_id'] = self.labels['series_id'].replace(uniq, [i for i in range(len(uniq))])
+        self.features['_series_id'] = self.labels['series_id'].replace(uniq, [i for i in range(len(uniq))])
         return self
     def save(self, path_str):
         self.labels.to_parquet(f"data/custom/event_fe_{path_str}.parquet")
         self.features.to_parquet(f"data/custom/series_fe_{path_str}.parquet")
+    def merging(self):
+
+        self.labels = self.labels.drop(columns=['night']) # drop "unuseful" columns
+
+        self.labels['step'] = self.labels['step'].astype(np.int64)
+        self.features.insert(2, "event", 0)
+
+        self.labels = self.labels.set_index(['series_id', 'step'])
+        self.labels = self.features.set_index(['series_id', 'step'])
+
+        for i in range(len(self.labels)):
+            try:
+                self.features[self.labels.iloc[i].name, 'event'] = self.labels.iloc[i]['event']
+            except:
+                pass
+        return self
     def fit(self):
-        return self.apply_PCA().apply_kmeans().apply_mult().apply_lag(2).apply_label_conversion()
+        return self.apply_label_conversion().merging()
 
 if __name__=="__main__":
-    # fe = FeatureEng(pd.read_parquet("data/custom/series_dropna_timestamp.parquet"), pd.read_parquet("data/custom/event_dropna_timestamp.parquet"))
-    # fee = fe.fit()
-    # print(fee.features)
-    # fee.save("0_basic_noroll")
+    fe = FeatureEng(pd.read_parquet("data/custom/series_dropna_timestamp.parquet"), pd.read_parquet("data/custom/event_dropna_timestamp.parquet"))
+    # print(fe.apply_label_conversion().labels.head())
+    fee = fe.fit()
+    fee.save("simple_merged")
 
-    fe = FeatureTrain(pd.read_parquet("data/custom/series_dropna_timestamp.parquet"), pd.read_parquet("data/custom/event_dropna_timestamp.parquet"))
-    fe = fe.fit()
-    fe.save("full0")
-
-    # print(fe.X)
-    # print(fe.X['event'].unique())
